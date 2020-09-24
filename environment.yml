@@ -1,0 +1,4 @@
+name: optin
+dependencies:
+  - numpy
+  - pytorch
