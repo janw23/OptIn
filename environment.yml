@@ -1,4 +1,4 @@
-name: optin-old
+name: optin
 dependencies:
   - numpy
   - pytorch
