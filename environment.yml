@@ -3,3 +3,4 @@ dependencies:
   - numpy
   - pytorch
   - pytest
+  - gym
