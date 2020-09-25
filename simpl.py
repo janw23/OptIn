@@ -4,13 +4,7 @@ import random
 
 import torch
 
-
-def _clip(val: float, low: float, high: float):
-    return min(high, max(low, val))
-
-
-def _clear_terminal():
-    print(chr(27) + "[2J")
+from optin.utils import clip, clear_terminal
 
 
 class AgentEnvironment:
@@ -20,7 +14,7 @@ class AgentEnvironment:
         self.agent_target_pos = 0.0
 
     def control_agent(self, agent_input: float):
-        self.agent_pos += _clip(agent_input, -1.0, 1.0)
+        self.agent_pos += clip(agent_input, -1.0, 1.0)
 
     def draw_state(self):
         def _draw_pos(pos: float):
@@ -77,7 +71,7 @@ if __name__ == '__main__':
         action = agent.make_action()
         env.control_agent(action)
 
-        _clear_terminal()
+        clear_terminal()
         env.draw_state()
         print('action', action)
 
