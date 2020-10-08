@@ -3,9 +3,12 @@ import random
 
 import torch
 import torch.nn as nn
+import numpy as np
+from matplotlib import pyplot as plt
 
 from optin.predictor.simple_predictor import SimplePredictor
 from optin.utils import Average
+from optin.utils.live_plot import LivePlot
 
 
 class RandomBatchStorage:
@@ -119,6 +122,20 @@ class AgentMind:
         self._memory_sequences_negative = RandomBatchStorage(
             batch_size=5, sample_shape=(1, sum(self._memory_sequence_chunks)))
 
+        # PLOTTING
+
+        fig, ax = plt.subplots(1, 1)
+        points = ax.plot(np.linspace(-6, 6, 20), np.zeros(20))[0]
+        ax.set_ylim(0, 1)
+        ax.set_xlim(-6, 6)
+
+        def _update_predictor_plot(observations: torch.Tensor):
+            x = torch.linspace(-6, 6, 20, dtype=torch.float32)
+            y = [self._reward_predictor(observations, a.view(1, 1)).item() for a in x]
+            points.set_data(np.array(x), np.array(y))
+
+        self.predictor_plot = LivePlot(_update_predictor_plot)
+
     def react(self, observation: List[float]):
         """Returns action based on [observation] from environment."""
         observation = torch.tensor(observation, dtype=torch.float32).unsqueeze(0)
@@ -143,6 +160,10 @@ class AgentMind:
         last_observations = last_observations[:, :self.observation_size].reshape(1, -1)
         # Add the most recent state which has not yet been written to memory
         last_observations = torch.cat((last_observations, self._last_observation), dim=1)
+
+        # todo RT
+        with torch.no_grad():
+            self.predictor_plot.redraw(last_observations)
 
         for optimizer_step in range(20):
             optim.zero_grad()
