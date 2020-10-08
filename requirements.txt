@@ -1,3 +1,5 @@
 optin~=0.0.0
 gym~=0.17.2
 setuptools~=50.3.0
+numpy~=1.19.1
+matplotlib~=3.3.1
