@@ -20,6 +20,7 @@ class SimplePredictor(nn.Module):
         # Model layers
         self.linear1 = nn.Linear(state_size + action_size, hidden_size)
         self.activation1 = nn.Tanh()
+        self.linear_temp = nn.Linear(hidden_size, hidden_size)  # todo RT
         self.linear2 = nn.Linear(hidden_size, prediction_size)
         self.activation2 = nn.Sigmoid()
 
@@ -48,6 +49,8 @@ class SimplePredictor(nn.Module):
 
         x = torch.cat((state, action), dim=1)
         x = self.linear1(x)
+        x = self.activation1(x)
+        x = self.linear_temp(x)
         x = self.activation1(x)
         x = self.linear2(x)
         x = self.activation2(x)

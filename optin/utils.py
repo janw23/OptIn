@@ -25,3 +25,18 @@ def proximate(a: float, b: float, eps=1e-6):
 def not_none(iterable_: Iterable):
     """Returns list of not-None objects from iterable."""
     return [obj for obj in iterable_ if obj is not None]
+
+
+class Average:
+    def __init__(self, last_steps: int):
+        self._last_steps = last_steps
+        self._data = [0] * last_steps
+        self._index = 0
+        self._sum = 0
+
+    def push(self, val: float):
+        self._sum += val
+        self._sum -= self._data[self._index]
+        self._data[self._index] = val
+        self._index = (self._index + 1) % self._last_steps
+        return self._sum / self._last_steps
