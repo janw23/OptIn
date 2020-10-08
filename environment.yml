@@ -1,5 +1,9 @@
+# run: conda env create -f environment.yml
 name: optin
 dependencies:
   - numpy
   - pytorch
   - pytest
+  - pip
+  - pip:
+      - -r file:requirements.txt
