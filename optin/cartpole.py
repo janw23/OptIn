@@ -93,11 +93,13 @@ class AgentMind:
         self.reward_size = 1
         self.hidden_size = 10
 
+        self.time_alive = 0
+
         self._last_action = None
         self._last_observation = None
 
-        self._last_observations_count = 10  # Number of last observations to use in predictor
-        self._prediction_future_steps = 4  # Number of steps prediction is in the future
+        self._last_observations_count = 4  # Number of last observations to use in predictor
+        self._prediction_future_steps = 8  # Number of steps prediction is in the future
         self._last_observations_size = observation_size * self._last_observations_count
 
         self._reward_predictor = SimplePredictor(
@@ -117,24 +119,26 @@ class AgentMind:
         # Sample form: (*observations, action, reward)
         # Remembers state sequences leading to reward = 1
         self._memory_sequences_positive = RandomBatchStorage(
-            batch_size=5, sample_shape=(1, sum(self._memory_sequence_chunks)))
+            batch_size=10, sample_shape=(1, sum(self._memory_sequence_chunks)))
         # Remembers state sequences leading to reward = 0
         self._memory_sequences_negative = RandomBatchStorage(
-            batch_size=5, sample_shape=(1, sum(self._memory_sequence_chunks)))
+            batch_size=10, sample_shape=(1, sum(self._memory_sequence_chunks)))
 
         # PLOTTING
 
         fig, ax = plt.subplots(1, 1)
-        points = ax.plot(np.linspace(-6, 6, 20), np.zeros(20))[0]
+        points = ax.plot(np.linspace(-6, 6, 100), np.zeros(100))[0]
         ax.set_ylim(0, 1)
         ax.set_xlim(-6, 6)
 
-        def _update_predictor_plot(observations: torch.Tensor):
-            x = torch.linspace(-6, 6, 20, dtype=torch.float32)
-            y = [self._reward_predictor(observations, a.view(1, 1)).item() for a in x]
-            points.set_data(np.array(x), np.array(y))
+        def _update_predictor_plot(predictions: torch.Tensor):
+            x = np.linspace(-6, 6, predictions.numel())
+            points.set_data(x, np.array(predictions))
 
         self.predictor_plot = LivePlot(_update_predictor_plot)
+
+    def set_time_alive(self, val: int):
+        self.time_alive = val
 
     def react(self, observation: List[float]):
         """Returns action based on [observation] from environment."""
@@ -147,11 +151,10 @@ class AgentMind:
 
     def _determine_raw_action(self, observation: Tensor):
         """Determines raw action based on [observation]."""
-        action = torch.zeros(1, 1, requires_grad=True, dtype=torch.float32)
-        optim = torch.optim.SGD([action], 0.4)
+        action = torch.zeros(1, 1, dtype=torch.float32)
 
-        if not self._memory_last_states.is_ready:
-            return torch.zeros(1, 1)
+        if not self._memory_sequences_positive.is_ready or not self._memory_sequences_negative.is_ready:
+            return torch.randn(1, 1, dtype=torch.float32)
 
         memory_data = self._memory_last_states.get_data()
         # Take n - 1 most recent last states in memory
@@ -163,18 +166,20 @@ class AgentMind:
 
         # todo RT
         with torch.no_grad():
-            self.predictor_plot.redraw(last_observations)
+            samples_count = 100
+            samples_range = (-6, 6)
+            last_observations_batched = last_observations.expand(samples_count, -1)
+            actions_batched = torch.linspace(*samples_range, samples_count).view(samples_count, 1)
+            predictions = self._reward_predictor(last_observations_batched, actions_batched)
+            best_choice = torch.argmax(predictions).view(1, 1)
+            prediction = predictions[best_choice]  # todo Not required
+            interval_start = torch.tensor(samples_range[0], dtype=torch.float32).view(1, 1)
+            interval_end = torch.tensor(samples_range[1], dtype=torch.float32).view(1, 1)
+            action = torch.lerp(interval_start, interval_end, best_choice.item() / samples_count)
 
-        for optimizer_step in range(20):
-            optim.zero_grad()
-            prediction = self._reward_predictor(last_observations, action)
-            loss = torch.abs(torch.ones(1, 1) - prediction).square()
-            loss.backward()
-            optim.step()
-
+        self.predictor_plot.redraw(predictions)
         print('prediction:', _slider(prediction.item()), end=' ')
 
-        action.requires_grad_(False)
         return action
 
     def _transform_raw_action(self, action: Tensor) -> int:
@@ -235,10 +240,11 @@ class AgentMind:
             memory_sequence_sample = _extract_sequence(
                 memory_data, self._last_observations_count, self._prediction_future_steps)
 
-            if memory_sequence_sample[0, -1].item() > 0.5:  # Reward is positive
-                self._memory_sequences_positive.push_sample(memory_sequence_sample)
-            else:  # Reward is negative
-                self._memory_sequences_negative.push_sample(memory_sequence_sample)
+            if self.time_alive >= self._prediction_future_steps:
+                if memory_sequence_sample[0, -1].item() > 0.5:  # Reward is positive
+                    self._memory_sequences_positive.push_sample(memory_sequence_sample)
+                else:  # Reward is negative
+                    self._memory_sequences_negative.push_sample(memory_sequence_sample)
 
     def _unpack_memory_data(self, memory_data: Tensor, chunks):
         """Splits [memory_data] into its subcomponents."""
@@ -269,13 +275,14 @@ if __name__ == '__main__':
     avg_steps = Average(5)
     avg = 0
 
-    for i_episode in range(20000):
+    for i_episode in range(200000):
         observation = env.reset()
 
         for t in range(1000):
 
             env.render()
 
+            agent.set_time_alive(t)
             action = agent.react(observation)
 
             observation, _, done, info = env.step(action)

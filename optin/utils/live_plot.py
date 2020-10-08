@@ -14,7 +14,7 @@ class LivePlot:
         """
         self._update_func = update_func
 
-    def redraw(self, *new_args, pause_time=0.01):
+    def redraw(self, *new_args, pause_time=0.001):
         """Redraws the plot with the new data.
 
         Args:

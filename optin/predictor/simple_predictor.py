@@ -46,7 +46,6 @@ class SimplePredictor(nn.Module):
     def forward(self, state: torch.Tensor, action: torch.Tensor):
         """Makes a prediction based on [state] and [action]."""
         assert self.correct_shapes(state=state, action=action)
-
         x = torch.cat((state, action), dim=1)
         x = self.linear1(x)
         x = self.activation1(x)
