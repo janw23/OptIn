@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 from optin.predictor.simple_predictor import SimplePredictor
 from optin.utils import Average
-from optin.utils.live_plot import LivePlot
+from optin.utils.live_plot import LinspaceLivePlot
 
 
 class RandomBatchStorage:
@@ -125,17 +125,7 @@ class AgentMind:
             batch_size=10, sample_shape=(1, sum(self._memory_sequence_chunks)))
 
         # PLOTTING
-
-        fig, ax = plt.subplots(1, 1)
-        points = ax.plot(np.linspace(-6, 6, 100), np.zeros(100))[0]
-        ax.set_ylim(0, 1)
-        ax.set_xlim(-6, 6)
-
-        def _update_predictor_plot(predictions: torch.Tensor):
-            x = np.linspace(-6, 6, predictions.numel())
-            points.set_data(x, np.array(predictions))
-
-        self.predictor_plot = LivePlot(_update_predictor_plot)
+        self.predictor_plot = LinspaceLivePlot()
 
     def set_time_alive(self, val: int):
         self.time_alive = val
@@ -177,7 +167,7 @@ class AgentMind:
             interval_end = torch.tensor(samples_range[1], dtype=torch.float32).view(1, 1)
             action = torch.lerp(interval_start, interval_end, best_choice.item() / samples_count)
 
-        self.predictor_plot.redraw(predictions)
+        self.predictor_plot.redraw(np.array(predictions))
         print('prediction:', _slider(prediction.item()), end=' ')
 
         return action
@@ -288,7 +278,8 @@ if __name__ == '__main__':
             observation, _, done, info = env.step(action)
             reward = 1.0 if not done else 0.0
 
-            agent.receive_reward(reward)
+            if avg < 100:
+                agent.receive_reward(reward)
             print('average steps:', avg, _slider(avg / 1000))
 
             if done:
