@@ -107,7 +107,9 @@ class TensorStorage(SampleStorage):
         insertion time and the most recent is at index 0."""
         self._data = self._data.roll(1, 0)
         self._insert(sample, 0)
-        self._samples_count += 1
+
+        if not self.is_full:
+            self._samples_count += 1
 
     def _push_method_random(self, sample: torch.Tensor):
         """If storage is full, inserts sample at random index.
