@@ -6,7 +6,7 @@ import torch
 
 
 class SampleStorage(ABC):
-    """Provides convenient way to keep samples."""
+    """Provides convenient way to store samples."""
 
     @abstractmethod
     def push(self, sample):
@@ -20,6 +20,7 @@ class SampleStorage(ABC):
 
 
 class TensorStorage(SampleStorage):
+    # todo Write tests.
     """Stores samples as a batch of torch tensors."""
 
     def __init__(
@@ -32,6 +33,7 @@ class TensorStorage(SampleStorage):
             dtype: Data type of elements in a sample.
             push_method: Specifies method used to insert new samples.
         """
+        assert capacity > 0 and sample_size > 0
         # Samples are internally kept as batch of flattened
         # tensors in a tensor with shape (batch size, sample size).
         self._data = torch.zeros(capacity, sample_size, dtype=dtype)
@@ -46,17 +48,22 @@ class TensorStorage(SampleStorage):
 
     @property
     def size(self):
-        """Returns number of stored samples."""
+        """Number of currently stored samples."""
         return self._samples_count
 
     @property
+    def capacity(self):
+        """Maximum number of samples that storage can hold."""
+        return self._capacity
+
+    @property
     def is_full(self):
-        """Returns True iff number of stored samples equals storage capacity."""
+        """True iff number of stored samples equals storage capacity."""
         return self._samples_count == self._capacity
 
     @property
     def is_empty(self):
-        """Returns True iff number of stored samples is 0."""
+        """True iff number of stored samples is 0."""
         return self._samples_count == 0
 
     def push(self, sample: torch.Tensor):
