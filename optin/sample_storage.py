@@ -77,14 +77,22 @@ class TensorStorage(SampleStorage):
         Args:
             push_method:
                 'roll' - samples are organized by insertion order starting with most recent at 0.
-                'random' - samples are inserted randomly."""
+                'random' - samples are inserted randomly.
+        """
         assert push_method in self._push_methods
         self._push_method_func = self._push_methods[push_method]
 
     def get(self, index: int):
-        """Returns sample at index % size."""
+        """Returns sample at index. Supports standard negative indexing."""
         assert not self.is_empty
-        return self._data[index % self._samples_count]
+
+        if index < 0:
+            index += self._samples_count
+
+        if index < 0 or index >= self._samples_count:
+            raise IndexError
+
+        return self._data[index].unsqueeze(0)
 
     def get_all(self):
         """Returns batch of all stored samples."""
